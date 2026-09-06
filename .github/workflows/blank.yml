@@ -23,7 +23,7 @@ jobs:
           # Remove any existing rule with the same name to avoid duplication
           netsh advfirewall firewall delete rule name="RDP-Tailscale"
 
-          # For testing, allow any incoming connection on port 3389
+          # Allow incoming connection on port 3389
           netsh advfirewall firewall add rule name="RDP-Tailscale" `
             dir=in action=allow protocol=TCP localport=3389
 
@@ -36,8 +36,16 @@ jobs:
           $password = '1212'
           $securePass = ConvertTo-SecureString $password -AsPlainText -Force
 
+          # Disable Windows Local Password Complexity Requirements for short password '1212'
+          secedit /export /cfg "$env:TEMP\secpol.cfg"
+          (Get-Content "$env:TEMP\secpol.cfg") -replace 'PasswordComplexity = 1', 'PasswordComplexity = 0' -replace 'MinimumPasswordLength = \d+', 'MinimumPasswordLength = 0' | Set-Content "$env:TEMP\secpol.cfg"
+          secedit /configure /db "$env:windir%\security\local.sdb" /cfg "$env:TEMP\secpol.cfg" /areas SECURITYPOLICY
+          Remove-Item "$env:TEMP\secpol.cfg" -Force
+
           if (-not (Get-LocalUser -Name 'RDP' -ErrorAction SilentlyContinue)) {
             New-LocalUser -Name 'RDP' -Password $securePass -AccountNeverExpires
+          } else {
+            Set-LocalUser -Name 'RDP' -Password $securePass
           }
 
           Add-LocalGroupMember -Group 'Administrators' -Member 'RDP' -ErrorAction SilentlyContinue
