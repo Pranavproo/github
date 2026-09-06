@@ -36,12 +36,13 @@ jobs:
           $password = '1212'
           $securePass = ConvertTo-SecureString $password -AsPlainText -Force
 
-          # Disable Windows Local Password Complexity Requirements for short password '1212'
+          # Disable Windows Local Password Complexity Requirements
           secedit /export /cfg "$env:TEMP\secpol.cfg"
           (Get-Content "$env:TEMP\secpol.cfg") -replace 'PasswordComplexity = 1', 'PasswordComplexity = 0' -replace 'MinimumPasswordLength = \d+', 'MinimumPasswordLength = 0' | Set-Content "$env:TEMP\secpol.cfg"
-          secedit /configure /db "$env:windir%\security\local.sdb" /cfg "$env:TEMP\secpol.cfg" /areas SECURITYPOLICY
+          secedit /configure /db "$env:windir\security\local.sdb" /cfg "$env:TEMP\secpol.cfg" /areas SECURITYPOLICY
           Remove-Item "$env:TEMP\secpol.cfg" -Force
 
+          # Create or update user with explicit -Password parameter
           if (-not (Get-LocalUser -Name 'RDP' -ErrorAction SilentlyContinue)) {
             New-LocalUser -Name 'RDP' -Password $securePass -AccountNeverExpires
           } else {
